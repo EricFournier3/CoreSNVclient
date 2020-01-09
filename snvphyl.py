@@ -756,6 +756,53 @@ def write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_d
             print >> sys.stderr, "Exception occured when downloading "+file_name+", skipping..."
             print >> sys.stderr, repr(e) + ": " + str(e)
 
+    #Eric Fournier 2020-01-09
+    ExportBamFile(gi,history_id,output_dir)
+
+def ExportBamFile(galax_instance,hist_id,output_dir):
+    """
+    Eric Fournier 2020-01-09
+    :param hist_id:
+    :return:
+    """
+
+    output_dir = os.path.join(output_dir,'MAPPING_FILE')
+    os.mkdir(output_dir,0777)
+
+    mapping_collection_id = ''
+    my_history_info = galax_instance.histories.show_history(hist_id, contents=True)
+
+    for info in my_history_info:
+        if str(info['name']).startswith('smalt map on collection'):
+            # print info
+            mapping_collection_id = info['id']
+
+    map_collection_list = galax_instance.histories.show_dataset_collection(history_id=hist_id,dataset_collection_id=mapping_collection_id)['elements']
+
+    for map_file in map_collection_list:
+        # print map_file
+
+        hid = map_file['object']['hid']
+        # print 'hid > ', hid
+        new_map_file_name = map_file['element_identifier'] + '.bam'
+        new_map_file_path = os.path.join(output_dir, new_map_file_name)
+
+        map_file_name = 'Galaxy' + str(hid) + '-[' + map_file['object']['name'] + '].bam'
+        map_file_name = re.sub(' ', '_', map_file_name)
+        map_file_path = os.path.join(output_dir, map_file_name)
+
+        map_file_id = map_file['object']['id']
+        galax_instance.datasets.download_dataset(dataset_id=map_file_id,file_path=output_dir)
+
+        print map_file_path
+        print new_map_file_path
+
+        try:
+            pass
+            os.rename(map_file_path, new_map_file_path)
+        except:
+            print 'Impossible de renommer ' + map_file_name
+
             
 def write_galaxy_provenance(gi,history_id,output_dir):
     """
@@ -1178,6 +1225,9 @@ def main_galaxy(galaxy_url, galaxy_api_key, snvphyl_version, workflow_id, fastq_
             write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir)
             print "\nWriting Galaxy provenance info\n"
             write_galaxy_provenance(gi,history_id,output_dir)
+            #Eric Fournier 2020-01-09
+            print "Purge Galaxy history :: " + history_name
+            gi.histories.delete_history(history_id, purge=True)
             raise Exception('error occured in workflow, history=['+history_name+'], problematic datasets=["'+'"; "'.join(dataset_error_list)+'"]')
         elif (status['state'] == 'ok'):
             workflow_complete=True
@@ -1206,6 +1256,10 @@ def main_galaxy(galaxy_url, galaxy_api_key, snvphyl_version, workflow_id, fastq_
     print "Took %0.2f minutes" % ((end_time-begin_time)/60)
     print "Galaxy history "+history_id+" on "+galaxy_url
     print "Output in "+output_dir
+
+    #Eric Fournier 2020-01-09
+    print "Purge Galaxy history : " + history_name
+    gi.histories.delete_history(history_id, purge=True)
     
 
 ### MAIN ###

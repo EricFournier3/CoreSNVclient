@@ -729,9 +729,10 @@ def wait_for_internet_connection(port):
             time.sleep(15)
             pass
 
-def write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir):
+def write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir,map_outdir):
     """
     Gets workflow output files.
+    Eric FOurnier 2020-01-09 ajout du parametre map_outdir
 
     :param :
 
@@ -757,16 +758,16 @@ def write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_d
             print >> sys.stderr, repr(e) + ": " + str(e)
 
     #Eric Fournier 2020-01-09
-    ExportBamFile(gi,history_id,output_dir)
+    ExportBamFile(gi,history_id,output_dir,map_outdir)
 
-def ExportBamFile(galax_instance,hist_id,output_dir):
+def ExportBamFile(galax_instance,hist_id,output_dir,map_outdir):
     """
     Eric Fournier 2020-01-09
     :param hist_id:
     :return:
     """
 
-    output_dir = os.path.join(output_dir,'MAPPING_FILE')
+    output_dir = os.path.join(output_dir,map_outdir)
     os.mkdir(output_dir,0777)
 
     mapping_collection_id = ''
@@ -955,9 +956,11 @@ def undeploy_docker_with_id(docker_id, with_docker_sudo):
     subprocess.call(docker_command_line)
 
 def main(snvphyl_version_settings, galaxy_url, galaxy_api_key, deploy_docker, docker_port, docker_cpus, with_docker_sudo, keep_deployed_docker, snvphyl_version, workflow_id, fastq_dir, fastq_files_as_links, fastq_history_name, reference_file, run_name, 
-         relative_snv_abundance, min_coverage, min_mean_mapping, repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir):
+         relative_snv_abundance, min_coverage, min_mean_mapping, repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir,map_outdir):
     """
     The main method, wrapping around 'main_galaxy' to start up a docker image if needed.
+
+    Eric Fournier 2020-01-09 ajout du parametre map_outdir
 
     :param: The command-line parameters.
 
@@ -1006,7 +1009,7 @@ def main(snvphyl_version_settings, galaxy_url, galaxy_api_key, deploy_docker, do
 
         try:
             main_galaxy(url, key, snvphyl_version, workflow_id, fastq_dir, fastq_history_name, reference_file, run_name, relative_snv_abundance, min_coverage, min_mean_mapping,
-                repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir)
+                repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir,map_outdir)
         finally:
             if (not keep_deployed_docker):
                 undeploy_docker_with_id(docker_id, with_docker_sudo)
@@ -1020,15 +1023,17 @@ def main(snvphyl_version_settings, galaxy_url, galaxy_api_key, deploy_docker, do
             os.mkdir(output_dir)
 
         main_galaxy(galaxy_url, galaxy_api_key, snvphyl_version, workflow_id, fastq_dir, fastq_history_name, reference_file, run_name, relative_snv_abundance, min_coverage, min_mean_mapping,
-            repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir)
+            repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir,map_outdir)
     else:
         raise Exception("Error: must specify both --galaxy-url and --galaxy-api-key or --deploy-docker")
 
 
 def main_galaxy(galaxy_url, galaxy_api_key, snvphyl_version, workflow_id, fastq_dir, fastq_history_name, reference_file, run_name, relative_snv_abundance, min_coverage, min_mean_mapping,
-	repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir):
+	repeat_minimum_length, repeat_minimum_pid, filter_density_window, filter_density_threshold, invalid_positions_file, output_dir,map_outdir):
     """
     The main method to interact with Galaxy and execute SNVPhyl.
+
+    Eric FOurnier 2020-01-09 ajout du parametre map_outdir
 
     :param: The command-line parameters, minus those to set up docker.
 
@@ -1222,7 +1227,7 @@ def main_galaxy(galaxy_url, galaxy_api_key, snvphyl_version, workflow_id, fastq_
                     dataset_error_list.append(entry['name'])
 
             print "\nError occured while running workflow, downloading existing output files\n"
-            write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir)
+            write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir,map_outdir)
             print "\nWriting Galaxy provenance info\n"
             write_galaxy_provenance(gi,history_id,output_dir)
             #Eric Fournier 2020-01-09
@@ -1240,7 +1245,8 @@ def main_galaxy(galaxy_url, galaxy_api_key, snvphyl_version, workflow_id, fastq_
 
     print "\nGetting workflow outputs"
     print "========================"
-    write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir)
+    #Eric FOurnier 2020-01-09 ajout du parametre map_outdir
+    write_workflow_outputs(workflow_settings, run_name, gi, history_id, output_dir,map_outdir)
 
     print "Getting provenance info from Galaxy"
     write_galaxy_provenance(gi,history_id,output_dir)
@@ -1308,6 +1314,9 @@ if __name__ == '__main__':
 
     output_group = parser.add_argument_group('Output')
     output_group.add_argument('--output-dir', action="store", dest="output_dir", required=False, help='Output directory to store results')
+
+    #Eric Fournier 2020-01-09
+    output_group.add_argument('--map-outdir',action="store", dest="map_outdir",required=True,help="Name of the output mapping directory")
 
     # Requires either this argument for direct upload of fastq files
     input_group.add_argument('--fastq-dir', action="store", dest="fastq_dir", required=False, help='Directory of fastq files (ending in .fastq, .fq, .fastq.gz, .fq.gz). For paired-end data must be separated into files ending in _1/_2 or _R1/_R2 or _R1_001/_R2_001.')
